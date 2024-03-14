@@ -93,8 +93,8 @@ func (scanner *historyScanner) Close() {
 	scanner.dbItr.Release()
 }
 
-// GetHistoryForKeys implements method in interface `ledger.HistoryQueryExecutor`
-func (q *QueryExecutor) GetHistoryForKeys(namespace string, keys []string) (commonledger.ResultsIterator, error) {
+// GetHistoryForKeyRange implements method in interface `ledger.HistoryQueryExecutor`
+func (q *QueryExecutor) GetHistoryForKeyRange(namespace string, keys []string) (commonledger.ResultsIterator, error) {
 	keyMap := make(map[string]keyData)
 	validKeys := []string{}
 	for _, key := range keys {
@@ -191,7 +191,7 @@ type versionScanner struct {
 	end        uint64
 }
 
-func (q *QueryExecutor) GetVersionsForKey(namespace string, key string, start uint64, end uint64) (commonledger.ResultsIterator, error) {
+func (q *QueryExecutor) GetHistoryForVersionRange(namespace string, key string, start uint64, end uint64) (commonledger.ResultsIterator, error) {
 	if end < start {
 		return nil, errors.Errorf("Start: %d is not less than or equal to end: %d", start, end)
 	}
@@ -309,8 +309,8 @@ func getKeyModificationFromTran(tranEnvelope *common.Envelope, namespace string,
 
 // ---------------------------------------------
 
-// GetUpdatesByBlockRange implements method in interface `ledger.HistoryQueryExecutor`
-func (q *QueryExecutor) GetUpdatesByBlockRange(namespace string, start uint64, end uint64, updates uint64) (commonledger.ResultsIterator, error) {
+// GetHistoryForBlockRange implements method in interface `ledger.HistoryQueryExecutor`
+func (q *QueryExecutor) GetHistoryForBlockRange(namespace string, start uint64, end uint64, updates uint64) (commonledger.ResultsIterator, error) {
 	if end < start {
 		return nil, errors.Errorf("Start: %d is not less than or equal to end: %d", start, end)
 	}
