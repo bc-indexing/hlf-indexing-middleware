@@ -190,12 +190,12 @@ func (h *Handler) handleMessageReadyState(msg *pb.ChaincodeMessage) error {
 		go h.HandleTransaction(msg, h.HandleGetQueryResult)
 	case pb.ChaincodeMessage_GET_HISTORY_FOR_KEY:
 		go h.HandleTransaction(msg, h.HandleGetHistoryForKey)
-	case pb.ChaincodeMessage_GET_HISTORY_FOR_KEYS:
-		go h.HandleTransaction(msg, h.HandleGetHistoryForKeys)
-	case pb.ChaincodeMessage_GET_VERSIONS_FOR_KEY:
-		go h.HandleTransaction(msg, h.HandleGetVersionsForKey)
-	case pb.ChaincodeMessage_GET_UPDATES_BY_BLOCK_RANGE:
-		go h.HandleTransaction(msg, h.HandleGetUpdatesByBlockRange)
+	case pb.ChaincodeMessage_GET_HISTORY_FOR_KEY_RANGE:
+		go h.HandleTransaction(msg, h.HandleGetHistoryForKeyRange)
+	case pb.ChaincodeMessage_GET_HISTORY_FOR_VERSION_RANGE:
+		go h.HandleTransaction(msg, h.HandleGetHistoryForVersionRange)
+	case pb.ChaincodeMessage_GET_HISTORY_FOR_BLOCK_RANGE:
+		go h.HandleTransaction(msg, h.HandleGetHistoryForBlockRange)
 	case pb.ChaincodeMessage_QUERY_STATE_NEXT:
 		go h.HandleTransaction(msg, h.HandleQueryStateNext)
 	case pb.ChaincodeMessage_QUERY_STATE_CLOSE:
@@ -913,20 +913,20 @@ func (h *Handler) HandleGetHistoryForKey(msg *pb.ChaincodeMessage, txContext *Tr
 }
 
 // Handles query to ledger history db
-func (h *Handler) HandleGetHistoryForKeys(msg *pb.ChaincodeMessage, txContext *TransactionContext) (*pb.ChaincodeMessage, error) {
+func (h *Handler) HandleGetHistoryForKeyRange(msg *pb.ChaincodeMessage, txContext *TransactionContext) (*pb.ChaincodeMessage, error) {
 	if txContext.HistoryQueryExecutor == nil {
 		return nil, errors.New("history database is not enabled")
 	}
 	iterID := h.UUIDGenerator.New()
 	namespaceID := txContext.NamespaceID
 
-	getHistoryForKeys := &pb.GetHistoryForKeys{}
-	err := proto.Unmarshal(msg.Payload, getHistoryForKeys)
+	getHistoryForKeyRange := &pb.GetHistoryForKeyRange{}
+	err := proto.Unmarshal(msg.Payload, getHistoryForKeyRange)
 	if err != nil {
 		return nil, errors.Wrap(err, "unmarshal failed")
 	}
 
-	historyIter, err := txContext.HistoryQueryExecutor.GetHistoryForKeys(namespaceID, getHistoryForKeys.Keys)
+	historyIter, err := txContext.HistoryQueryExecutor.GetHistoryForKeyRange(namespaceID, getHistoryForKeyRange.Keys)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
@@ -950,20 +950,20 @@ func (h *Handler) HandleGetHistoryForKeys(msg *pb.ChaincodeMessage, txContext *T
 	return &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE, Payload: payloadBytes, Txid: msg.Txid, ChannelId: msg.ChannelId}, nil
 }
 
-func (h *Handler) HandleGetVersionsForKey(msg *pb.ChaincodeMessage, txContext *TransactionContext) (*pb.ChaincodeMessage, error) {
+func (h *Handler) HandleGetHistoryForVersionRange(msg *pb.ChaincodeMessage, txContext *TransactionContext) (*pb.ChaincodeMessage, error) {
 	if txContext.HistoryQueryExecutor == nil {
 		return nil, errors.New("history database is not enabled")
 	}
 	iterID := h.UUIDGenerator.New()
 	namespaceID := txContext.NamespaceID
 
-	getVersionsForKey := &pb.GetVersionsForKey{}
-	err := proto.Unmarshal(msg.Payload, getVersionsForKey)
+	getHistoryForVersionRange := &pb.GetHistoryForVersionRange{}
+	err := proto.Unmarshal(msg.Payload, getHistoryForVersionRange)
 	if err != nil {
 		return nil, errors.Wrap(err, "unmarshal failed")
 	}
 
-	versionIter, err := txContext.HistoryQueryExecutor.GetVersionsForKey(namespaceID, getVersionsForKey.Key, getVersionsForKey.Start, getVersionsForKey.End)
+	versionIter, err := txContext.HistoryQueryExecutor.GetHistoryForVersionRange(namespaceID, getHistoryForVersionRange.Key, getHistoryForVersionRange.Start, getHistoryForVersionRange.End)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
@@ -987,20 +987,20 @@ func (h *Handler) HandleGetVersionsForKey(msg *pb.ChaincodeMessage, txContext *T
 	return &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE, Payload: payloadBytes, Txid: msg.Txid, ChannelId: msg.ChannelId}, nil
 }
 
-func (h *Handler) HandleGetUpdatesByBlockRange(msg *pb.ChaincodeMessage, txContext *TransactionContext) (*pb.ChaincodeMessage, error) {
+func (h *Handler) HandleGetHistoryForBlockRange(msg *pb.ChaincodeMessage, txContext *TransactionContext) (*pb.ChaincodeMessage, error) {
 	if txContext.HistoryQueryExecutor == nil {
 		return nil, errors.New("history database is not enabled")
 	}
 	iterID := h.UUIDGenerator.New()
 	namespaceID := txContext.NamespaceID
 
-	getUpdatesByBlockRange := &pb.GetUpdatesByBlockRange{}
-	err := proto.Unmarshal(msg.Payload, getUpdatesByBlockRange)
+	getHistoryForBlockRange := &pb.GetHistoryForBlockRange{}
+	err := proto.Unmarshal(msg.Payload, getHistoryForBlockRange)
 	if err != nil {
 		return nil, errors.Wrap(err, "unmarshal failed")
 	}
 
-	blockRangeIter, err := txContext.HistoryQueryExecutor.GetUpdatesByBlockRange(namespaceID, getUpdatesByBlockRange.Start, getUpdatesByBlockRange.End, getUpdatesByBlockRange.Updates)
+	blockRangeIter, err := txContext.HistoryQueryExecutor.GetHistoryForBlockRange(namespaceID, getHistoryForBlockRange.Start, getHistoryForBlockRange.End, getHistoryForBlockRange.Updates)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}

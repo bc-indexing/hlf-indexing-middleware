@@ -294,9 +294,9 @@ type HistoryQueryExecutor interface {
 	// GetHistoryForKey retrieves the history of values for a key.
 	// The returned ResultsIterator contains results of type *KeyModification which is defined in fabric-protos/ledger/queryresult.
 	GetHistoryForKey(namespace string, key string) (commonledger.ResultsIterator, error)
-	GetHistoryForKeys(namespace string, keys []string) (commonledger.ResultsIterator, error)
-	GetVersionsForKey(namespace string, key string, start uint64, end uint64) (commonledger.ResultsIterator, error)
-	GetUpdatesByBlockRange(namespace string, start uint64, end uint64, updates uint64) (commonledger.ResultsIterator, error)
+	GetHistoryForKeyRange(namespace string, keys []string) (commonledger.ResultsIterator, error)
+	GetHistoryForVersionRange(namespace string, key string, start uint64, end uint64) (commonledger.ResultsIterator, error)
+	GetHistoryForBlockRange(namespace string, start uint64, end uint64, updates uint64) (commonledger.ResultsIterator, error)
 }
 
 // TxSimulator simulates a transaction on a consistent snapshot of the 'as recent state as possible'
