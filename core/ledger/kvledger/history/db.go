@@ -140,7 +140,7 @@ func (d *DB) Commit(block *common.Block) error {
 					GIkey := constructGlobalIndexKey(ns, kvWrite.Key)
 					localIndexVal, present := dataKeys[kvWrite.Key]
 					if present {
-						prev, numVersions, transactions, err = decodelocalIndex(localIndexVal)
+						prev, numVersions, transactions, err = decodeLocalIndex(localIndexVal)
 					} else {
 						// Get returns nil if key not found
 						globalIndexBytes, err := d.levelDB.Get(GIkey)
@@ -164,7 +164,7 @@ func (d *DB) Commit(block *common.Block) error {
 					transactions = append(transactions, tranNo)
 					numVersions++
 
-					indexVal := constructlocalIndex(prev, numVersions, transactions)
+					indexVal := constructLocalIndex(prev, numVersions, transactions)
 					dataKeys[kvWrite.Key] = indexVal
 
 					updatedGlobalIndexBytes := constructGlobalIndexVal(blockNo, numVersions)

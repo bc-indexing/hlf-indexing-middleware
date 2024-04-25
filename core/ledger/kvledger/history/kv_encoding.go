@@ -22,7 +22,7 @@ var (
 	savePointKey    = []byte{'s'}  // a single key in db for persisting savepoint
 )
 
-func constructlocalIndex(prev uint64, numVersions uint64, transactions []uint64) localIndex {
+func constructLocalIndex(prev uint64, numVersions uint64, transactions []uint64) localIndex {
 	var k []byte
 	k = append(k, util.EncodeOrderPreservingVarUint64(prev)...)
 	k = append(k, util.EncodeOrderPreservingVarUint64(numVersions)...)
@@ -32,7 +32,7 @@ func constructlocalIndex(prev uint64, numVersions uint64, transactions []uint64)
 	return localIndex(k)
 }
 
-func decodelocalIndex(localIndex localIndex) (uint64, uint64, []uint64, error) {
+func decodeLocalIndex(localIndex localIndex) (uint64, uint64, []uint64, error) {
 	prev, prevBytesConsumed, err := util.DecodeOrderPreservingVarUint64(localIndex)
 	if err != nil {
 		return 0, 0, nil, err
