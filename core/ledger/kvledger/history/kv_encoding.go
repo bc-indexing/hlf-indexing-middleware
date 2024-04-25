@@ -84,9 +84,8 @@ func constructRangeScan(ns string, key string) *rangeScan {
 	k = append(k, []byte(key)...)
 	k = append(k, compositeKeySep...)
 
-	s := append([]byte{}, k...)
 	return &rangeScan{
-		startKey: append(s, util.EncodeOrderPreservingVarUint64(1)...),
+		startKey: k,
 		endKey:   append(k, 0xff),
 	}
 }
