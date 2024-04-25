@@ -32,7 +32,7 @@ func (q *QueryExecutor) GetHistoryForKey(namespace string, key string) (commonle
 		return nil, err
 	}
 
-	GIkey := []byte(key)
+	GIkey := constructGlobalIndexKey(namespace, key)
 	globalIndexBytes, err := q.levelDB.Get(GIkey)
 	if err != nil {
 		return nil, errors.Errorf("Error reading from history database for key: %s", key)
@@ -54,7 +54,7 @@ func (q *QueryExecutor) GetHistoryForKey(namespace string, key string) (commonle
 	}
 
 	indexVal := dbItr.Value()
-	prev, _, transactions, err := decodeNewIndex(indexVal)
+	prev, _, transactions, err := decodelocalIndex(indexVal)
 	if err != nil {
 		return nil, err
 	}
@@ -135,7 +135,7 @@ func (scanner *historyScanner) updateBlock() error {
 		return errors.Errorf("Error from dbItr.Seek() for key: %s, block: %d", scanner.key, scanner.previousBlock)
 	}
 	indexVal := scanner.dbItr.Value()
-	prev, _, transactions, err := decodeNewIndex(indexVal)
+	prev, _, transactions, err := decodelocalIndex(indexVal)
 	if err != nil {
 		return err
 	}
@@ -274,7 +274,7 @@ func (q *QueryExecutor) GetHistoryForVersionRange(namespace string, key string, 
 		return nil, err
 	}
 
-	GIkey := []byte(key)
+	GIkey := constructGlobalIndexKey(namespace, key)
 	globalIndexBytes, err := q.levelDB.Get(GIkey)
 	if err != nil {
 		return nil, errors.Errorf("Error reading from history database for key: %s", key)
@@ -296,7 +296,7 @@ func (q *QueryExecutor) GetHistoryForVersionRange(namespace string, key string, 
 	}
 
 	indexVal := dbItr.Value()
-	prev, _, transactions, err := decodeNewIndex(indexVal)
+	prev, _, transactions, err := decodelocalIndex(indexVal)
 	if err != nil {
 		return nil, err
 	}
@@ -308,7 +308,7 @@ func (q *QueryExecutor) GetHistoryForVersionRange(namespace string, key string, 
 	scanner := &versionScanner{namespace, key, dbItr, q.blockStore, blockNum, indexVal, txIndex, start, end}
 	// Find first block containing end version in range
 	for {
-		_, numVersions, transactions, err := decodeNewIndex(scanner.indexVal)
+		_, numVersions, transactions, err := decodelocalIndex(scanner.indexVal)
 		if err != nil {
 			return nil, err
 		}
@@ -341,7 +341,7 @@ type versionScanner struct {
 	dbItr        iterator.Iterator
 	blockStore   *blkstorage.BlockStore
 	currentBlock uint64
-	indexVal     newIndex
+	indexVal     localIndex
 	txIndex      int
 	start        uint64
 	end          uint64
@@ -351,7 +351,7 @@ func (scanner *versionScanner) Next() (commonledger.QueryResult, error) {
 	if scanner.indexVal == nil {
 		return nil, nil
 	}
-	_, numVersions, transactions, err := decodeNewIndex(scanner.indexVal)
+	_, numVersions, transactions, err := decodelocalIndex(scanner.indexVal)
 	if err != nil {
 		return nil, err
 	}
@@ -371,7 +371,7 @@ func (scanner *versionScanner) Next() (commonledger.QueryResult, error) {
 			// Iterator exhausted
 			return nil, nil
 		}
-		_, _, transactions, err = decodeNewIndex(scanner.indexVal)
+		_, _, transactions, err = decodelocalIndex(scanner.indexVal)
 		if err != nil {
 			return nil, err
 		}
@@ -409,7 +409,7 @@ func (scanner *versionScanner) Close() {
 }
 
 func (scanner *versionScanner) updateBlock() error {
-	prev, _, _, err := decodeNewIndex(scanner.indexVal)
+	prev, _, _, err := decodelocalIndex(scanner.indexVal)
 	if err != nil {
 		return err
 	}
@@ -421,7 +421,7 @@ func (scanner *versionScanner) updateBlock() error {
 		return errors.Errorf("Error from dbItr.Seek() for key: %s, block: %d", scanner.key, prev)
 	}
 	scanner.indexVal = scanner.dbItr.Value()
-	_, _, transactions, err := decodeNewIndex(scanner.indexVal)
+	_, _, transactions, err := decodelocalIndex(scanner.indexVal)
 	if err != nil {
 		return err
 	}
@@ -531,7 +531,7 @@ func (scanner *blockRangeScanner) countKeyUpdates(updates uint64) error {
 		if err != nil {
 			return err
 		}
-		_, _, transactions, err := decodeNewIndex(scanner.dbItr.Value())
+		_, _, transactions, err := decodelocalIndex(scanner.dbItr.Value())
 		if err != nil {
 			return err
 		}
@@ -558,7 +558,7 @@ func (scanner *blockRangeScanner) nextKey() (bool, string, error) {
 		scanner.currentBlock = blockNum
 		if scanner.keys[key] {
 			indexVal := scanner.dbItr.Value()
-			_, _, transactions, err := decodeNewIndex(indexVal)
+			_, _, transactions, err := decodelocalIndex(indexVal)
 			if err != nil {
 				return false, "", err
 			}

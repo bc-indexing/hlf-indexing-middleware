@@ -14,7 +14,7 @@ import (
 )
 
 type dataKey []byte
-type newIndex []byte
+type localIndex []byte
 type globalIndex []byte
 
 var (
@@ -22,30 +22,30 @@ var (
 	savePointKey    = []byte{'s'}  // a single key in db for persisting savepoint
 )
 
-func constructNewIndex(prev uint64, numVersions uint64, transactions []uint64) newIndex {
+func constructlocalIndex(prev uint64, numVersions uint64, transactions []uint64) localIndex {
 	var k []byte
 	k = append(k, util.EncodeOrderPreservingVarUint64(prev)...)
 	k = append(k, util.EncodeOrderPreservingVarUint64(numVersions)...)
 	for _, tx := range transactions {
 		k = append(k, util.EncodeOrderPreservingVarUint64(tx)...)
 	}
-	return newIndex(k)
+	return localIndex(k)
 }
 
-func decodeNewIndex(newIndex newIndex) (uint64, uint64, []uint64, error) {
-	prev, prevBytesConsumed, err := util.DecodeOrderPreservingVarUint64(newIndex)
+func decodelocalIndex(localIndex localIndex) (uint64, uint64, []uint64, error) {
+	prev, prevBytesConsumed, err := util.DecodeOrderPreservingVarUint64(localIndex)
 	if err != nil {
 		return 0, 0, nil, err
 	}
-	numVersions, versionBytesConsumed, err := util.DecodeOrderPreservingVarUint64(newIndex[prevBytesConsumed:])
+	numVersions, versionBytesConsumed, err := util.DecodeOrderPreservingVarUint64(localIndex[prevBytesConsumed:])
 	if err != nil {
 		return 0, 0, nil, err
 	}
 	var transactions []uint64
 	currentTxStart := prevBytesConsumed + versionBytesConsumed
 	var lastTxBytesConsumed int
-	for i := currentTxStart; i < len(newIndex); i += lastTxBytesConsumed {
-		tx, bytesConsumed, err := util.DecodeOrderPreservingVarUint64(newIndex[currentTxStart:])
+	for i := currentTxStart; i < len(localIndex); i += lastTxBytesConsumed {
+		tx, bytesConsumed, err := util.DecodeOrderPreservingVarUint64(localIndex[currentTxStart:])
 		lastTxBytesConsumed = bytesConsumed
 		currentTxStart += bytesConsumed
 		if err != nil {
@@ -65,7 +65,14 @@ func constructDataKey(ns string, blocknum uint64, key string) dataKey {
 	return dataKey(k)
 }
 
-func constructGlobalIndex(prev uint64, numVersions uint64) globalIndex {
+func constructGlobalIndexKey(ns string, key string) globalIndex {
+	k := append([]byte(ns), compositeKeySep...)
+	k = append(k, util.EncodeOrderPreservingVarUint64(uint64(len(key)))...)
+	k = append(k, []byte(key)...)
+	return globalIndex(k)
+}
+
+func constructGlobalIndexVal(prev uint64, numVersions uint64) globalIndex {
 	var k []byte
 	k = append(k, util.EncodeOrderPreservingVarUint64(prev)...)
 	k = append(k, util.EncodeOrderPreservingVarUint64(numVersions)...)
