@@ -32,7 +32,7 @@ func (q *QueryExecutor) GetHistoryForKey(namespace string, key string) (commonle
 		return nil, err
 	}
 
-	GIkey := []byte("_" + key)
+	GIkey := []byte(key)
 	globalIndexBytes, err := q.levelDB.Get(GIkey)
 	if err != nil {
 		return nil, errors.Errorf("Error reading from history database for key: %s", key)
@@ -274,7 +274,7 @@ func (q *QueryExecutor) GetHistoryForVersionRange(namespace string, key string, 
 		return nil, err
 	}
 
-	GIkey := []byte("_" + key)
+	GIkey := []byte(key)
 	globalIndexBytes, err := q.levelDB.Get(GIkey)
 	if err != nil {
 		return nil, errors.Errorf("Error reading from history database for key: %s", key)
