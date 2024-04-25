@@ -41,7 +41,6 @@ func constructDataKey(ns string, key string, minVersion uint64) dataKey {
 
 func constructGlobalIndex(ns string, key string) globalIndex {
 	k := append([]byte(ns), compositeKeySep...)
-	k = append(k, util.EncodeOrderPreservingVarUint64(uint64(len(key)))...)
 	k = append(k, []byte(key)...)
 	return globalIndex(k)
 }
