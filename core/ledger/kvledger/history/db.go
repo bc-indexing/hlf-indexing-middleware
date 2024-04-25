@@ -138,7 +138,7 @@ func (d *DB) Commit(block *common.Block) error {
 						transactions []uint64
 					)
 					// Get returns nil if key not found
-					GIkey := []byte("_" + kvWrite.Key)
+					GIkey := []byte(kvWrite.Key)
 					versionsBytes, err := d.levelDB.Get(GIkey)
 					if err != nil {
 						return err

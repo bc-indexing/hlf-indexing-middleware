@@ -242,7 +242,7 @@ func (q *QueryExecutor) GetHistoryForVersionRange(namespace string, key string, 
 		return nil, errors.Errorf("Start: %d, end: %d cannot be less than 1", start, end)
 	}
 
-	GIkey := []byte("_" + key)
+	GIkey := []byte(key)
 	versionsBytes, err := q.levelDB.Get(GIkey)
 	if err != nil {
 		return nil, errors.Errorf("Error reading from history database for key: %s", key)
