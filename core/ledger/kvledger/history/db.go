@@ -166,7 +166,7 @@ func (d *DB) Commit(block *common.Block) error {
 
 					minVersion := versions - uint64(len(transactions)) + 1
 					dataKey := constructDataKey(ns, kvWrite.Key, minVersion)
-					indexVal := constructlocalIndex(blockNo, transactions)
+					indexVal := constructLocalIndex(blockNo, transactions)
 					logger.Debugf("Added to dbBatch: %s~%d: %d~%v\n", kvWrite.Key, minVersion, blockNo, transactions)
 					dbBatch.Put(dataKey, indexVal)
 				}

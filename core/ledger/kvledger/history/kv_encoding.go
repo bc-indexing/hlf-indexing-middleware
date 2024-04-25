@@ -46,7 +46,7 @@ func constructGlobalIndex(ns string, key string) globalIndex {
 	return globalIndex(k)
 }
 
-func constructlocalIndex(blockNum uint64, transactions []uint64) localIndex {
+func constructLocalIndex(blockNum uint64, transactions []uint64) localIndex {
 	var ni []byte
 	ni = append(ni, util.EncodeOrderPreservingVarUint64(blockNum)...)
 	for _, tx := range transactions {
@@ -55,7 +55,7 @@ func constructlocalIndex(blockNum uint64, transactions []uint64) localIndex {
 	return localIndex(ni)
 }
 
-func decodelocalIndex(localIndex localIndex) (uint64, []uint64, error) {
+func decodeLocalIndex(localIndex localIndex) (uint64, []uint64, error) {
 	blockNum, blockNumBytesConsumed, err := util.DecodeOrderPreservingVarUint64(localIndex)
 	if err != nil {
 		return 0, nil, err
