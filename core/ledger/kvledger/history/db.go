@@ -83,7 +83,7 @@ func (d *DB) Commit(block *common.Block) error {
 	var tranNo uint64
 
 	dbBatch := d.levelDB.NewUpdateBatch()
-	dataKeys := make(map[string]newIndex)
+	dataKeys := make(map[string]localIndex)
 
 	logger.Debugf("Channel [%s]: Updating history database for blockNo [%v] with [%d] transactions",
 		d.name, blockNo, len(block.Data.Data))
@@ -137,10 +137,10 @@ func (d *DB) Commit(block *common.Block) error {
 						numVersions  uint64
 						transactions []uint64
 					)
-					GIkey := []byte("_" + kvWrite.Key)
-					newIndexVal, present := dataKeys[kvWrite.Key]
+					GIkey := constructGlobalIndexKey(ns, kvWrite.Key)
+					localIndexVal, present := dataKeys[kvWrite.Key]
 					if present {
-						prev, numVersions, transactions, err = decodeNewIndex(newIndexVal)
+						prev, numVersions, transactions, err = decodeLocalIndex(localIndexVal)
 					} else {
 						// Get returns nil if key not found
 						globalIndexBytes, err := d.levelDB.Get(GIkey)
@@ -164,10 +164,10 @@ func (d *DB) Commit(block *common.Block) error {
 					transactions = append(transactions, tranNo)
 					numVersions++
 
-					indexVal := constructNewIndex(prev, numVersions, transactions)
+					indexVal := constructLocalIndex(prev, numVersions, transactions)
 					dataKeys[kvWrite.Key] = indexVal
 
-					updatedGlobalIndexBytes := constructGlobalIndex(blockNo, numVersions)
+					updatedGlobalIndexBytes := constructGlobalIndexVal(blockNo, numVersions)
 					err = d.levelDB.Put(GIkey, updatedGlobalIndexBytes, true)
 					if err != nil {
 						return err
