@@ -13,7 +13,8 @@ import (
 )
 
 type dataKey []byte
-type newIndex []byte
+type globalIndex []byte
+type localIndex []byte
 type rangeScan struct {
 	startKey, endKey []byte
 }
@@ -38,25 +39,31 @@ func constructDataKey(ns string, key string, minVersion uint64) dataKey {
 	return dataKey(k)
 }
 
-func constructNewIndex(blockNum uint64, transactions []uint64) newIndex {
+func constructGlobalIndex(ns string, key string) globalIndex {
+	k := append([]byte(ns), compositeKeySep...)
+	k = append(k, []byte(key)...)
+	return globalIndex(k)
+}
+
+func constructLocalIndex(blockNum uint64, transactions []uint64) localIndex {
 	var ni []byte
 	ni = append(ni, util.EncodeOrderPreservingVarUint64(blockNum)...)
 	for _, tx := range transactions {
 		ni = append(ni, util.EncodeOrderPreservingVarUint64(tx)...)
 	}
-	return newIndex(ni)
+	return localIndex(ni)
 }
 
-func decodeNewIndex(newIndex newIndex) (uint64, []uint64, error) {
-	blockNum, blockNumBytesConsumed, err := util.DecodeOrderPreservingVarUint64(newIndex)
+func decodeLocalIndex(localIndex localIndex) (uint64, []uint64, error) {
+	blockNum, blockNumBytesConsumed, err := util.DecodeOrderPreservingVarUint64(localIndex)
 	if err != nil {
 		return 0, nil, err
 	}
 	var transactions []uint64
 	currentTxStart := blockNumBytesConsumed
 	var lastTxBytesConsumed int
-	for i := currentTxStart; i < len(newIndex); i += lastTxBytesConsumed {
-		tx, bytesConsumed, err := util.DecodeOrderPreservingVarUint64(newIndex[currentTxStart:])
+	for i := currentTxStart; i < len(localIndex); i += lastTxBytesConsumed {
+		tx, bytesConsumed, err := util.DecodeOrderPreservingVarUint64(localIndex[currentTxStart:])
 		lastTxBytesConsumed = bytesConsumed
 		currentTxStart += bytesConsumed
 		if err != nil {

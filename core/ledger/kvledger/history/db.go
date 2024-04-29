@@ -138,7 +138,7 @@ func (d *DB) Commit(block *common.Block) error {
 						transactions []uint64
 					)
 					// Get returns nil if key not found
-					GIkey := []byte("_" + kvWrite.Key)
+					GIkey := constructGlobalIndex(ns, kvWrite.Key)
 					versionsBytes, err := d.levelDB.Get(GIkey)
 					if err != nil {
 						return err
@@ -166,7 +166,7 @@ func (d *DB) Commit(block *common.Block) error {
 
 					minVersion := versions - uint64(len(transactions)) + 1
 					dataKey := constructDataKey(ns, kvWrite.Key, minVersion)
-					indexVal := constructNewIndex(blockNo, transactions)
+					indexVal := constructLocalIndex(blockNo, transactions)
 					logger.Debugf("Added to dbBatch: %s~%d: %d~%v\n", kvWrite.Key, minVersion, blockNo, transactions)
 					dbBatch.Put(dataKey, indexVal)
 				}

@@ -65,7 +65,7 @@ func (scanner *historyScanner) Next() (commonledger.QueryResult, error) {
 			return nil, nil
 		}
 		indexVal := scanner.dbItr.Value()
-		currentBlock, transactions, err := decodeNewIndex(indexVal)
+		currentBlock, transactions, err := decodeLocalIndex(indexVal)
 		if err != nil {
 			return nil, err
 		}
@@ -242,7 +242,7 @@ func (q *QueryExecutor) GetHistoryForVersionRange(namespace string, key string, 
 		return nil, errors.Errorf("Start: %d, end: %d cannot be less than 1", start, end)
 	}
 
-	GIkey := []byte("_" + key)
+	GIkey := constructGlobalIndex(namespace, key)
 	versionsBytes, err := q.levelDB.Get(GIkey)
 	if err != nil {
 		return nil, errors.Errorf("Error reading from history database for key: %s", key)
@@ -276,7 +276,7 @@ func (q *QueryExecutor) GetHistoryForVersionRange(namespace string, key string, 
 			return nil, err
 		}
 		indexVal := dbItr.Value()
-		currentBlock, transactions, err = decodeNewIndex(indexVal)
+		currentBlock, transactions, err = decodeLocalIndex(indexVal)
 		if err != nil {
 			return nil, err
 		}
@@ -299,7 +299,7 @@ func (scanner *versionScanner) Next() (commonledger.QueryResult, error) {
 			return nil, nil
 		}
 		indexVal := scanner.dbItr.Value()
-		currentBlock, transactions, err := decodeNewIndex(indexVal)
+		currentBlock, transactions, err := decodeLocalIndex(indexVal)
 		if err != nil {
 			return nil, err
 		}
@@ -512,7 +512,7 @@ func (scanner *blockRangeScanner) nextKey() (bool, error) {
 	}
 	for scanner.currentKeyItr.Next() {
 		indexVal := scanner.currentKeyItr.Value()
-		blockNum, transactions, err := decodeNewIndex(indexVal)
+		blockNum, transactions, err := decodeLocalIndex(indexVal)
 		if err != nil {
 			return false, err
 		}
@@ -533,7 +533,7 @@ func (scanner *blockRangeScanner) updateCurrentKeyData() (bool, error) {
 		return true, nil
 	}
 	indexVal := scanner.currentKeyItr.Value()
-	blockNum, transactions, err := decodeNewIndex(indexVal)
+	blockNum, transactions, err := decodeLocalIndex(indexVal)
 	if err != nil {
 		return true, err
 	}
