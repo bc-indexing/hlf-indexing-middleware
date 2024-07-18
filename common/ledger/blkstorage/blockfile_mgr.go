@@ -663,7 +663,7 @@ func (mgr *blockfileMgr) fetchBlockBytes(lp *fileLocPointer) ([]byte, error) {
 
 func (mgr *blockfileMgr) fetchRawBytes(lp *fileLocPointer) ([]byte, error) {
 	logger.Debugf("Entering fetchRawBytes() %v\n", lp)
-	b, found := mgr.cache.Get(lp)
+	b, found := mgr.cache.Get(lp.locPointer)
 	if !found {
 		logger.Debug("Cache miss :(")
 		filePath := deriveBlockfilePath(mgr.rootDir, lp.fileSuffixNum)
@@ -676,7 +676,7 @@ func (mgr *blockfileMgr) fetchRawBytes(lp *fileLocPointer) ([]byte, error) {
 		if err != nil {
 			return nil, err
 		}
-		mgr.cache.Put(lp, b)
+		mgr.cache.Put(lp.locPointer, b)
 	} else {
 		logger.Debug("Cache hit!")
 	}
