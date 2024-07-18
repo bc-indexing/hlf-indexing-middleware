@@ -8,24 +8,24 @@ const CACHE_SIZE = 10000
 
 type LRUCache struct {
 	capacity int
-	cache    map[locPointer]*list.Element
+	cache    map[fileLocPointer]*list.Element
 	list     *list.List
 }
 
 type Entry struct {
-	Key   locPointer
+	Key   fileLocPointer
 	Value []byte
 }
 
 func NewLRUCache() *LRUCache {
 	return &LRUCache{
 		capacity: CACHE_SIZE,
-		cache:    make(map[locPointer]*list.Element),
+		cache:    make(map[fileLocPointer]*list.Element),
 		list:     list.New(),
 	}
 }
 
-func (c *LRUCache) Get(lp locPointer) ([]byte, bool) {
+func (c *LRUCache) Get(lp fileLocPointer) ([]byte, bool) {
 	if ele, found := c.cache[lp]; found {
 		c.list.MoveToFront(ele)
 		return ele.Value.(*Entry).Value, true
@@ -34,7 +34,7 @@ func (c *LRUCache) Get(lp locPointer) ([]byte, bool) {
 	return nil, false
 }
 
-func (c *LRUCache) Put(lp locPointer, value []byte) {
+func (c *LRUCache) Put(lp fileLocPointer, value []byte) {
 	if ele, found := c.cache[lp]; found {
 		c.list.MoveToFront(ele)
 		ele.Value.(*Entry).Value = value
