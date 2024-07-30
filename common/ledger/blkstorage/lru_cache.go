@@ -4,7 +4,7 @@ import (
 	"container/list"
 )
 
-const CACHE_SIZE = 10000
+const CACHE_SIZE = 100000
 
 type LRUCache struct {
 	capacity int
