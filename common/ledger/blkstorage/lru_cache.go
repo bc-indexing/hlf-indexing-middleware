@@ -36,7 +36,7 @@ func (c *LRUCache) Get(blockNum uint64, tranNum uint64) (*fileLocPointer, bool) 
 		return ele.Value.(*Entry).Value, true
 	}
 
-	return newFileLocationPointer(0, 0, nil), false
+	return nil, false
 }
 
 func (c *LRUCache) Put(blockNum uint64, tranNum uint64, value *fileLocPointer) {
