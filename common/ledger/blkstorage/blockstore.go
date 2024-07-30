@@ -22,6 +22,7 @@ type BlockStore struct {
 	conf    *Conf
 	fileMgr *blockfileMgr
 	stats   *ledgerStats
+	cache   *LRUCache
 }
 
 // newBlockStore constructs a `BlockStore`
@@ -37,7 +38,9 @@ func newBlockStore(id string, conf *Conf, indexConfig *IndexConfig,
 	info := fileMgr.getBlockchainInfo()
 	ledgerStats.updateBlockchainHeight(info.Height)
 
-	return &BlockStore{id, conf, fileMgr, ledgerStats}, nil
+	cache := NewLRUCache()
+
+	return &BlockStore{id, conf, fileMgr, ledgerStats, cache}, nil
 }
 
 // AddBlock adds a new block
@@ -84,7 +87,18 @@ func (store *BlockStore) RetrieveTxByID(txID string) (*common.Envelope, error) {
 
 // RetrieveTxByBlockNumTranNum returns a transaction for the given <blockNum, tranNum>
 func (store *BlockStore) RetrieveTxByBlockNumTranNum(blockNum uint64, tranNum uint64) (*common.Envelope, error) {
-	return store.fileMgr.retrieveTransactionByBlockNumTranNum(blockNum, tranNum)
+	flp, found := store.cache.Get(blockNum, tranNum)
+	if !found {
+		logger.Debug("Cache miss :(")
+		flp, err := store.fileMgr.index.getTXLocByBlockNumTranNum(blockNum, tranNum)
+		if err != nil {
+			return nil, err
+		}
+		store.cache.Put(blockNum, tranNum, flp)
+		return store.fileMgr.retrieveTransactionByBlockNumTranNum(blockNum, tranNum)
+	}
+	logger.Debug("Cache hit!")
+	return store.fileMgr.fetchTransactionEnvelope(flp)
 }
 
 // RetrieveBlockByTxID returns the block for the specified txID
