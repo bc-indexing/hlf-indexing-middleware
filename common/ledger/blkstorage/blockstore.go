@@ -141,12 +141,10 @@ func (store *BlockStore) getFLP(blockNum uint64, tranNum uint64) (*fileLocPointe
 	cacheChan := make(chan *fileLocPointer, 1)
 	fileMgrChan := make(chan *fileLocPointer, 1)
 	errChan := make(chan error, 1)
-	cancelChan := make(chan struct{})
 
 	defer close(cacheChan)
 	defer close(fileMgrChan)
 	defer close(errChan)
-	defer close(cancelChan)
 
 	go func() {
 		flp, found := store.cache.Get(blockNum, tranNum)
@@ -160,28 +158,14 @@ func (store *BlockStore) getFLP(blockNum uint64, tranNum uint64) (*fileLocPointe
 	}()
 
 	go func() {
-		select {
-		case <-cancelChan: // Exit if canceled
-			logger.Debug("CANCELLED second go routine")
+		flp, err := store.fileMgr.index.getTXLocByBlockNumTranNum(blockNum, tranNum)
+		if err != nil {
+			errChan <- err
 			return
-		default:
-			flp, err := store.fileMgr.index.getTXLocByBlockNumTranNum(blockNum, tranNum)
-			if err != nil {
-				errChan <- err
-				return
-			}
-			logger.Debugf("Put into cache: blockNum: %d, tranNum: %d, locPointer: %v\n", blockNum, tranNum, flp.locPointer)
-			store.cache.Put(blockNum, tranNum, flp)
-			fileMgrChan <- flp
 		}
-		// flp, err := store.fileMgr.index.getTXLocByBlockNumTranNum(blockNum, tranNum)
-		// if err != nil {
-		// 	errChan <- err
-		// 	return
-		// }
-		// logger.Debugf("Put into cache: blockNum: %d, tranNum: %d, locPointer: %v\n", blockNum, tranNum, flp.locPointer)
-		// store.cache.Put(blockNum, tranNum, flp)
-		// fileMgrChan <- flp
+		logger.Debugf("Put into cache: blockNum: %d, tranNum: %d, locPointer: %v\n", blockNum, tranNum, flp.locPointer)
+		store.cache.Put(blockNum, tranNum, flp)
+		fileMgrChan <- flp
 	}()
 
 	select {
