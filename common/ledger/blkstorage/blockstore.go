@@ -7,7 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package blkstorage
 
 import (
-	"sync"
 	"time"
 
 	"github.com/hyperledger/fabric-protos-go/common"
@@ -131,15 +130,11 @@ func (store *BlockStore) updateBlockStats(blockNum uint64, blockstorageCommitTim
 }
 
 func (store *BlockStore) getFLP(blockNum uint64, tranNum uint64) (*fileLocPointer, error) {
-	var wg sync.WaitGroup
-	cacheChan := make(chan *fileLocPointer)
-	fileMgrChan := make(chan *fileLocPointer)
-	errChan := make(chan error)
-
-	wg.Add(2)
+	cacheChan := make(chan *fileLocPointer, 1)
+	fileMgrChan := make(chan *fileLocPointer, 1)
+	errChan := make(chan error, 1)
 
 	go func() {
-		defer wg.Done()
 		flp, found := store.cache.Get(blockNum, tranNum)
 		if found {
 			cacheChan <- flp
@@ -149,7 +144,6 @@ func (store *BlockStore) getFLP(blockNum uint64, tranNum uint64) (*fileLocPointe
 	}()
 
 	go func() {
-		defer wg.Done()
 		flp, err := store.fileMgr.index.getTXLocByBlockNumTranNum(blockNum, tranNum)
 		if err != nil {
 			errChan <- err
@@ -157,13 +151,6 @@ func (store *BlockStore) getFLP(blockNum uint64, tranNum uint64) (*fileLocPointe
 		}
 		store.cache.Put(blockNum, tranNum, flp)
 		fileMgrChan <- flp
-	}()
-
-	go func() {
-		wg.Wait()
-		close(cacheChan)
-		close(fileMgrChan)
-		close(errChan)
 	}()
 
 	select {
