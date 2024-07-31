@@ -130,6 +130,7 @@ func (store *BlockStore) updateBlockStats(blockNum uint64, blockstorageCommitTim
 }
 
 func (store *BlockStore) getFLP(blockNum uint64, tranNum uint64) (*fileLocPointer, error) {
+	logger.Debug("Entering getFLP")
 	cacheChan := make(chan *fileLocPointer, 1)
 	fileMgrChan := make(chan *fileLocPointer, 1)
 	errChan := make(chan error, 1)
@@ -137,8 +138,10 @@ func (store *BlockStore) getFLP(blockNum uint64, tranNum uint64) (*fileLocPointe
 	go func() {
 		flp, found := store.cache.Get(blockNum, tranNum)
 		if found {
+			logger.Debug("Cache hit!")
 			cacheChan <- flp
 		} else {
+			logger.Debug("Cache miss!")
 			cacheChan <- nil
 		}
 	}()
