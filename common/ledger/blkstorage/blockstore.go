@@ -14,7 +14,6 @@ import (
 	"github.com/hyperledger/fabric/common/ledger"
 	"github.com/hyperledger/fabric/common/ledger/snapshot"
 	"github.com/hyperledger/fabric/common/ledger/util/leveldbhelper"
-	"github.com/pkg/errors"
 )
 
 // BlockStore - filesystem based implementation for `BlockStore`
@@ -165,11 +164,16 @@ func (store *BlockStore) getFLP(blockNum uint64, tranNum uint64) (*fileLocPointe
 		if flp != nil {
 			return flp, nil
 		}
+		// Wait for fileMgrChan if flp is nil
+		select {
+		case flp := <-fileMgrChan:
+			return flp, nil
+		case err := <-errChan:
+			return nil, err
+		}
 	case err := <-errChan:
 		return nil, err
 	case flp := <-fileMgrChan:
 		return flp, nil
 	}
-
-	return nil, errors.New("Transaction not found")
 }
