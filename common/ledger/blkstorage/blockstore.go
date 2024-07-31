@@ -138,7 +138,7 @@ func (store *BlockStore) getFLP(blockNum uint64, tranNum uint64) (*fileLocPointe
 	go func() {
 		flp, found := store.cache.Get(blockNum, tranNum)
 		if found {
-			logger.Debug("Cache hit!")
+			logger.Debugf("Cache hit: %v\n", flp.locPointer)
 			cacheChan <- flp
 		} else {
 			logger.Debug("Cache miss!")
