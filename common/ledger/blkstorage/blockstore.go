@@ -144,6 +144,7 @@ func (store *BlockStore) getFLP(blockNum uint64, tranNum uint64) (*fileLocPointe
 			logger.Debug("Cache miss!")
 			cacheChan <- nil
 		}
+		close(cacheChan)
 	}()
 
 	go func() {
@@ -154,6 +155,8 @@ func (store *BlockStore) getFLP(blockNum uint64, tranNum uint64) (*fileLocPointe
 		}
 		store.cache.Put(blockNum, tranNum, flp)
 		fileMgrChan <- flp
+		close(fileMgrChan)
+		close(errChan)
 	}()
 
 	select {
