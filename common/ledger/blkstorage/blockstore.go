@@ -14,6 +14,7 @@ import (
 	"github.com/hyperledger/fabric/common/ledger"
 	"github.com/hyperledger/fabric/common/ledger/snapshot"
 	"github.com/hyperledger/fabric/common/ledger/util/leveldbhelper"
+	"github.com/pkg/errors"
 )
 
 // BlockStore - filesystem based implementation for `BlockStore`
@@ -88,6 +89,13 @@ func (store *BlockStore) RetrieveTxByID(txID string) (*common.Envelope, error) {
 // RetrieveTxByBlockNumTranNum returns a transaction for the given <blockNum, tranNum>
 func (store *BlockStore) RetrieveTxByBlockNumTranNum(blockNum uint64, tranNum uint64) (*common.Envelope, error) {
 	logger.Debug("Entering RetrieveTxByBlockNumTranNum")
+	if blockNum < store.fileMgr.firstPossibleBlockNumberInBlockFiles() {
+		return nil, errors.Errorf(
+			"cannot serve block [%d]. The ledger is bootstrapped from a snapshot. First available block = [%d]",
+			blockNum, store.fileMgr.firstPossibleBlockNumberInBlockFiles(),
+		)
+	}
+
 	flp, err := store.getFLP(blockNum, tranNum)
 	if err != nil {
 		return nil, err
@@ -143,7 +151,6 @@ func (store *BlockStore) getFLP(blockNum uint64, tranNum uint64) (*fileLocPointe
 			logger.Debug("Cache miss!")
 			cacheChan <- nil
 		}
-		close(cacheChan)
 	}()
 
 	go func() {
@@ -155,25 +162,24 @@ func (store *BlockStore) getFLP(blockNum uint64, tranNum uint64) (*fileLocPointe
 		logger.Debugf("Put into cache: blockNum: %d, tranNum: %d, locPointer: %v\n", blockNum, tranNum, flp.locPointer)
 		store.cache.Put(blockNum, tranNum, flp)
 		fileMgrChan <- flp
-		close(fileMgrChan)
-		close(errChan)
 	}()
 
 	select {
-	case flp := <-cacheChan:
-		if flp != nil {
-			return flp, nil
+	case flp1 := <-cacheChan:
+		if flp1 != nil {
+			return flp1, nil
 		}
+		logger.Debug("Nil flp! Waiting for fileLocPointer from getTXLocByBlockNumTranNum()")
 		// Wait for fileMgrChan if flp is nil
 		select {
-		case flp := <-fileMgrChan:
-			return flp, nil
+		case flp2 := <-fileMgrChan:
+			return flp2, nil
 		case err := <-errChan:
 			return nil, err
 		}
 	case err := <-errChan:
 		return nil, err
-	case flp := <-fileMgrChan:
-		return flp, nil
+	case flp1 := <-fileMgrChan:
+		return flp1, nil
 	}
 }
