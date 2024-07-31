@@ -162,6 +162,7 @@ func (store *BlockStore) getFLP(blockNum uint64, tranNum uint64) (*fileLocPointe
 	go func() {
 		select {
 		case <-cancelChan: // Exit if canceled
+			logger.Debug("CANCELLED second go routine")
 			return
 		default:
 			flp, err := store.fileMgr.index.getTXLocByBlockNumTranNum(blockNum, tranNum)
