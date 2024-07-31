@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package blkstorage
 
 import (
+	"sync"
 	"time"
 
 	"github.com/hyperledger/fabric-protos-go/common"
@@ -14,6 +15,7 @@ import (
 	"github.com/hyperledger/fabric/common/ledger"
 	"github.com/hyperledger/fabric/common/ledger/snapshot"
 	"github.com/hyperledger/fabric/common/ledger/util/leveldbhelper"
+	"github.com/pkg/errors"
 )
 
 // BlockStore - filesystem based implementation for `BlockStore`
@@ -88,18 +90,15 @@ func (store *BlockStore) RetrieveTxByID(txID string) (*common.Envelope, error) {
 // RetrieveTxByBlockNumTranNum returns a transaction for the given <blockNum, tranNum>
 func (store *BlockStore) RetrieveTxByBlockNumTranNum(blockNum uint64, tranNum uint64) (*common.Envelope, error) {
 	logger.Debug("Entering RetrieveTxByBlockNumTranNum")
-	flp, found := store.cache.Get(blockNum, tranNum)
-	if !found {
-		logger.Debug("Cache miss :(")
-		flp, err := store.fileMgr.index.getTXLocByBlockNumTranNum(blockNum, tranNum)
-		if err != nil {
-			return nil, err
-		}
-		store.cache.Put(blockNum, tranNum, flp)
-		return store.fileMgr.retrieveTransactionByBlockNumTranNum(blockNum, tranNum)
+	flp, err := store.getFLP(blockNum, tranNum)
+	if err != nil {
+		return nil, err
 	}
-	logger.Debug("Cache hit!")
-	return store.fileMgr.fetchTransactionEnvelope(flp)
+	txData, err := store.fileMgr.fetchTransactionEnvelope(flp)
+	if err != nil {
+		return nil, err
+	}
+	return txData, nil
 }
 
 // RetrieveBlockByTxID returns the block for the specified txID
@@ -129,4 +128,54 @@ func (store *BlockStore) Shutdown() {
 func (store *BlockStore) updateBlockStats(blockNum uint64, blockstorageCommitTime time.Duration) {
 	store.stats.updateBlockchainHeight(blockNum + 1)
 	store.stats.updateBlockstorageCommitTime(blockstorageCommitTime)
+}
+
+func (store *BlockStore) getFLP(blockNum uint64, tranNum uint64) (*fileLocPointer, error) {
+	var wg sync.WaitGroup
+	cacheChan := make(chan *fileLocPointer)
+	fileMgrChan := make(chan *fileLocPointer)
+	errChan := make(chan error)
+
+	wg.Add(2)
+
+	go func() {
+		defer wg.Done()
+		flp, found := store.cache.Get(blockNum, tranNum)
+		if found {
+			cacheChan <- flp
+		} else {
+			cacheChan <- nil
+		}
+	}()
+
+	go func() {
+		defer wg.Done()
+		flp, err := store.fileMgr.index.getTXLocByBlockNumTranNum(blockNum, tranNum)
+		if err != nil {
+			errChan <- err
+			return
+		}
+		store.cache.Put(blockNum, tranNum, flp)
+		fileMgrChan <- flp
+	}()
+
+	go func() {
+		wg.Wait()
+		close(cacheChan)
+		close(fileMgrChan)
+		close(errChan)
+	}()
+
+	select {
+	case flp := <-cacheChan:
+		if flp != nil {
+			return flp, nil
+		}
+	case err := <-errChan:
+		return nil, err
+	case flp := <-fileMgrChan:
+		return flp, nil
+	}
+
+	return nil, errors.New("Transaction not found")
 }

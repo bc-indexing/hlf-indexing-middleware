@@ -2,6 +2,7 @@ package blkstorage
 
 import (
 	"container/list"
+	"sync"
 )
 
 const CACHE_SIZE = 100000
@@ -10,6 +11,7 @@ type LRUCache struct {
 	capacity int
 	cache    map[IntPair]*list.Element
 	list     *list.List
+	mu       sync.Mutex
 }
 
 type Entry struct {
@@ -30,16 +32,16 @@ func NewLRUCache() *LRUCache {
 }
 
 func (c *LRUCache) Get(blockNum uint64, tranNum uint64) (*fileLocPointer, bool) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
 	blockTran := IntPair{blockNum, tranNum}
-	if ele, found := c.cache[blockTran]; found {
-		c.list.MoveToFront(ele)
-		return ele.Value.(*Entry).Value, true
-	}
-
-	return nil, false
+	val, found := c.cache[blockTran]
+	return val.Value.(*Entry).Value, found
 }
 
 func (c *LRUCache) Put(blockNum uint64, tranNum uint64, value *fileLocPointer) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
 	blockTran := IntPair{blockNum, tranNum}
 	if ele, found := c.cache[blockTran]; found {
 		c.list.MoveToFront(ele)
