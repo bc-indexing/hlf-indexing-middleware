@@ -151,17 +151,20 @@ func (store *BlockStore) getFLP(blockNum uint64, tranNum uint64) (*fileLocPointe
 			logger.Debug("Cache miss!")
 			cacheChan <- nil
 		}
+		close(cacheChan)
 	}()
 
 	go func() {
 		flp, err := store.fileMgr.index.getTXLocByBlockNumTranNum(blockNum, tranNum)
 		if err != nil {
 			errChan <- err
+			close(errChan)
 			return
 		}
 		logger.Debugf("Put into cache: blockNum: %d, tranNum: %d, locPointer: %v\n", blockNum, tranNum, flp.locPointer)
 		store.cache.Put(blockNum, tranNum, flp)
 		fileMgrChan <- flp
+		close(fileMgrChan)
 	}()
 
 	select {
