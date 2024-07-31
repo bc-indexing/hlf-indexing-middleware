@@ -142,6 +142,10 @@ func (store *BlockStore) getFLP(blockNum uint64, tranNum uint64) (*fileLocPointe
 	fileMgrChan := make(chan *fileLocPointer, 1)
 	errChan := make(chan error, 1)
 
+	defer close(cacheChan)
+	defer close(fileMgrChan)
+	defer close(errChan)
+
 	go func() {
 		flp, found := store.cache.Get(blockNum, tranNum)
 		if found {
@@ -151,38 +155,35 @@ func (store *BlockStore) getFLP(blockNum uint64, tranNum uint64) (*fileLocPointe
 			logger.Debug("Cache miss!")
 			cacheChan <- nil
 		}
-		close(cacheChan)
 	}()
 
 	go func() {
 		flp, err := store.fileMgr.index.getTXLocByBlockNumTranNum(blockNum, tranNum)
 		if err != nil {
 			errChan <- err
-			close(errChan)
 			return
 		}
 		logger.Debugf("Put into cache: blockNum: %d, tranNum: %d, locPointer: %v\n", blockNum, tranNum, flp.locPointer)
 		store.cache.Put(blockNum, tranNum, flp)
 		fileMgrChan <- flp
-		close(fileMgrChan)
 	}()
 
 	select {
-	case flp1 := <-cacheChan:
-		if flp1 != nil {
-			return flp1, nil
+	case flp := <-cacheChan:
+		if flp != nil {
+			return flp, nil
 		}
 		logger.Debug("Nil flp! Waiting for fileLocPointer from getTXLocByBlockNumTranNum()")
 		// Wait for fileMgrChan if flp is nil
 		select {
-		case flp2 := <-fileMgrChan:
-			return flp2, nil
+		case flp := <-fileMgrChan:
+			return flp, nil
 		case err := <-errChan:
 			return nil, err
 		}
 	case err := <-errChan:
 		return nil, err
-	case flp1 := <-fileMgrChan:
-		return flp1, nil
+	case flp := <-fileMgrChan:
+		return flp, nil
 	}
 }
