@@ -153,6 +153,7 @@ func (store *BlockStore) getFLP(blockNum uint64, tranNum uint64) (*fileLocPointe
 			errChan <- err
 			return
 		}
+		logger.Debugf("Put into cache: blockNum: %d, tranNum: %d, locPointer: %v\n", blockNum, tranNum, flp.locPointer)
 		store.cache.Put(blockNum, tranNum, flp)
 		fileMgrChan <- flp
 		close(fileMgrChan)
