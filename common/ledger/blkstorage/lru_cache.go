@@ -35,8 +35,12 @@ func (c *LRUCache) Get(blockNum uint64, tranNum uint64) (*fileLocPointer, bool) 
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	blockTran := IntPair{blockNum, tranNum}
-	val, found := c.cache[blockTran]
-	return val.Value.(*Entry).Value, found
+	if ele, found := c.cache[blockTran]; found {
+		c.list.MoveToFront(ele)
+		return ele.Value.(*Entry).Value, true
+	}
+
+	return nil, false
 }
 
 func (c *LRUCache) Put(blockNum uint64, tranNum uint64, value *fileLocPointer) {
