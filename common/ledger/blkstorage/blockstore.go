@@ -90,18 +90,10 @@ func (store *BlockStore) RetrieveTxByID(txID string) (*common.Envelope, error) {
 // RetrieveTxByBlockNumTranNum returns a transaction for the given <blockNum, tranNum>
 func (store *BlockStore) RetrieveTxByBlockNumTranNum(blockNum uint64, tranNum uint64) (*common.Envelope, error) {
 	logger.Debug("Entering RetrieveTxByBlockNumTranNum")
-	if blockNum < store.fileMgr.firstPossibleBlockNumberInBlockFiles() {
-		return nil, errors.Errorf(
-			"cannot serve block [%d]. The ledger is bootstrapped from a snapshot. First available block = [%d]",
-			blockNum, store.fileMgr.firstPossibleBlockNumberInBlockFiles(),
-		)
-	}
-
 	txData, err := store.getTxUsingCache(blockNum, tranNum)
 	if err != nil {
 		return nil, err
 	}
-
 	return txData, nil
 }
 
@@ -162,6 +154,12 @@ func (store *BlockStore) getTxUsingCache(blockNum uint64, tranNum uint64) (*comm
 	// Get flp from index
 	go func() {
 		defer wg.Done()
+		if blockNum < store.fileMgr.firstPossibleBlockNumberInBlockFiles() {
+			errChan <- errors.Errorf(
+				"cannot serve block [%d]. The ledger is bootstrapped from a snapshot. First available block = [%d]",
+				blockNum, store.fileMgr.firstPossibleBlockNumberInBlockFiles(),
+			)
+		}
 		flp, err := store.fileMgr.index.getTXLocByBlockNumTranNum(blockNum, tranNum)
 		if err != nil {
 			errChan <- err
