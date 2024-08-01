@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package blkstorage
 
 import (
+	"sync"
 	"time"
 
 	"github.com/hyperledger/fabric-protos-go/common"
@@ -96,14 +97,11 @@ func (store *BlockStore) RetrieveTxByBlockNumTranNum(blockNum uint64, tranNum ui
 		)
 	}
 
-	flp, err := store.getFLP(blockNum, tranNum)
+	txData, err := store.getTxUsingCache(blockNum, tranNum)
 	if err != nil {
 		return nil, err
 	}
-	txData, err := store.fileMgr.fetchTransactionEnvelope(flp)
-	if err != nil {
-		return nil, err
-	}
+
 	return txData, nil
 }
 
@@ -136,19 +134,21 @@ func (store *BlockStore) updateBlockStats(blockNum uint64, blockstorageCommitTim
 	store.stats.updateBlockstorageCommitTime(blockstorageCommitTime)
 }
 
-func (store *BlockStore) getFLP(blockNum uint64, tranNum uint64) (*fileLocPointer, error) {
+func (store *BlockStore) getTxUsingCache(blockNum uint64, tranNum uint64) (*common.Envelope, error) {
 	logger.Debug("Entering getFLP")
 	cacheChan := make(chan *fileLocPointer, 1)
 	fileMgrChan := make(chan *fileLocPointer, 1)
 	errChan := make(chan error, 1)
-	cancelChan := make(chan struct{})
-
 	defer close(cacheChan)
 	defer close(fileMgrChan)
 	defer close(errChan)
-	defer close(cancelChan)
 
+	var wg sync.WaitGroup
+	wg.Add(2)
+
+	// Get flp from cache
 	go func() {
+		defer wg.Done()
 		flp, found := store.cache.Get(blockNum, tranNum)
 		if found {
 			logger.Debugf("Cache hit: %v\n", flp.locPointer)
@@ -159,47 +159,46 @@ func (store *BlockStore) getFLP(blockNum uint64, tranNum uint64) (*fileLocPointe
 		}
 	}()
 
+	// Get flp from index
 	go func() {
-		select {
-		case <-cancelChan: // Exit if canceled
-			logger.Debug("CANCELLED second go routine")
+		defer wg.Done()
+		flp, err := store.fileMgr.index.getTXLocByBlockNumTranNum(blockNum, tranNum)
+		if err != nil {
+			errChan <- err
 			return
-		default:
-			flp, err := store.fileMgr.index.getTXLocByBlockNumTranNum(blockNum, tranNum)
-			if err != nil {
-				errChan <- err
-				return
-			}
-			logger.Debugf("Put into cache: blockNum: %d, tranNum: %d, locPointer: %v\n", blockNum, tranNum, flp.locPointer)
-			store.cache.Put(blockNum, tranNum, flp)
-			fileMgrChan <- flp
 		}
-		// flp, err := store.fileMgr.index.getTXLocByBlockNumTranNum(blockNum, tranNum)
-		// if err != nil {
-		// 	errChan <- err
-		// 	return
-		// }
-		// logger.Debugf("Put into cache: blockNum: %d, tranNum: %d, locPointer: %v\n", blockNum, tranNum, flp.locPointer)
-		// store.cache.Put(blockNum, tranNum, flp)
-		// fileMgrChan <- flp
+		logger.Debugf("Put into cache: blockNum: %d, tranNum: %d, locPointer: %v\n", blockNum, tranNum, flp.locPointer)
+		store.cache.Put(blockNum, tranNum, flp)
+		fileMgrChan <- flp
 	}()
 
+	var flp *fileLocPointer
+
 	select {
-	case flp := <-cacheChan:
-		if flp != nil {
-			return flp, nil
-		}
-		logger.Debug("Nil flp! Waiting for fileLocPointer from getTXLocByBlockNumTranNum()")
-		// Wait for fileMgrChan if flp is nil
-		select {
-		case flp := <-fileMgrChan:
-			return flp, nil
-		case err := <-errChan:
-			return nil, err
+	case cache_flp := <-cacheChan:
+		if cache_flp == nil {
+			logger.Debug("Nil flp! Waiting for fileLocPointer from getTXLocByBlockNumTranNum()")
+			// Wait for fileMgrChan if flp is nil
+			select {
+			case index_flp := <-fileMgrChan:
+				flp = index_flp
+			case err := <-errChan:
+				return nil, err
+			}
+		} else {
+			flp = cache_flp
 		}
 	case err := <-errChan:
 		return nil, err
-	case flp := <-fileMgrChan:
-		return flp, nil
+	case index_flp := <-fileMgrChan:
+		flp = index_flp
 	}
+
+	txData, err := store.fileMgr.fetchTransactionEnvelope(flp)
+	if err != nil {
+		return nil, err
+	}
+
+	wg.Wait()
+	return txData, nil
 }
