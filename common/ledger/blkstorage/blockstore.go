@@ -165,6 +165,8 @@ func (store *BlockStore) getTxUsingCache(blockNum uint64, tranNum uint64) (*comm
 			errChan <- err
 			return
 		}
+		logger.Debugf("Put into cache: blockNum: %d, tranNum: %d, locPointer: %v\n", blockNum, tranNum, flp.locPointer)
+		store.cache.Put(blockNum, tranNum, flp)
 		fileMgrChan <- flp
 	}()
 
@@ -177,8 +179,6 @@ func (store *BlockStore) getTxUsingCache(blockNum uint64, tranNum uint64) (*comm
 			// Wait for fileMgrChan if flp is nil
 			select {
 			case index_flp := <-fileMgrChan:
-				logger.Debugf("Put into cache: blockNum: %d, tranNum: %d, locPointer: %v\n", blockNum, tranNum, index_flp.locPointer)
-				store.cache.Put(blockNum, tranNum, index_flp)
 				flp = index_flp
 			case err := <-errChan:
 				return nil, err
