@@ -88,7 +88,12 @@ func (store *BlockStore) RetrieveTxByID(txID string) (*common.Envelope, error) {
 // RetrieveTxByBlockNumTranNum returns a transaction for the given <blockNum, tranNum>
 func (store *BlockStore) RetrieveTxByBlockNumTranNum(blockNum uint64, tranNum uint64) (*common.Envelope, error) {
 	logger.Debug("Entering RetrieveTxByBlockNumTranNum")
+	// start
+	start := time.Now()
 	flp, found := store.cache.Get(blockNum, tranNum)
+	// end
+	elapsed := time.Since(start).Microseconds()
+	logger.Debugf("Time to check cache: %v microseconds\n", elapsed)
 	if !found {
 		logger.Debug("Cache miss :(")
 		flp, err := store.fileMgr.index.getTXLocByBlockNumTranNum(blockNum, tranNum)
