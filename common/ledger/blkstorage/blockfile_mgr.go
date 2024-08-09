@@ -626,7 +626,7 @@ func (mgr *blockfileMgr) retrieveTransactionByBlockNumTranNum(blockNum uint64, t
 	}
 	// end
 	elapsed := time.Since(start).Microseconds()
-	logger.Debugf("Time to check cache: %v microseconds\n", elapsed)
+	logger.Debugf("Time to check indexdb: %v microseconds\n", elapsed)
 	return mgr.fetchTransactionEnvelope(loc)
 }
 
